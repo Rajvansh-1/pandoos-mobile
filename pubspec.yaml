@@ -33,75 +33,73 @@ dependencies:
     sdk: flutter
 
   # ── STATE & ARCHITECTURE ──────────────────────────────
-  flutter_riverpod:
-  riverpod_annotation:
-  go_router:
+  flutter_riverpod: ^2.5.1
+  riverpod_annotation: ^2.3.5
+  go_router: ^14.0.0
 
   # ── AUDIO ENGINE ─────────────────────────────────────
-  just_audio:
-  audio_service:
-  audio_session:
+  just_audio: ^0.9.40
+  audio_service: ^0.18.15
+  audio_session: ^0.1.21
   just_waveform:
 
   # ── PANDA EMOTION ENGINE ─────────────────────────────
   rive: ^0.13.4
-  flutter_animate:
+  flutter_animate: ^4.5.0
   flutter_haptic_feedback:
 
   # ── BACKEND ───────────────────────────────────────────
-  supabase_flutter:
-  google_sign_in:
+  supabase_flutter: ^2.5.0
+  google_sign_in: ^6.2.1
 
   # ── NETWORKING ────────────────────────────────────────
-  dio:
-  dio_cache_interceptor:
-  dio_smart_retry:
-  connectivity_plus:
-  flutter_dotenv:
+  dio: ^5.4.3
+  dio_cache_interceptor: ^3.5.0
+  dio_smart_retry: ^6.0.0
+  connectivity_plus: ^6.0.3
+  flutter_dotenv: ^5.1.0
 
   # ── LOCAL STORAGE (OFFLINE FIRST) ────────────────────
-  hive_flutter:
-  isar: ^4.0.0-dev.14
-  isar_flutter_libs: ^4.0.0-dev.14
-  path_provider:
+  hive_flutter: ^1.1.0
+  path_provider: ^2.1.3
 
   # ── IMAGES & MEDIA ────────────────────────────────────
-  cached_network_image:
-  flutter_cache_manager:
-  palette_generator:
+  cached_network_image: ^3.3.1
+  flutter_cache_manager: ^3.3.1
+  palette_generator: ^0.3.3
 
   # ── UI & DESIGN ────────────────────────────────────────
-  shimmer:
-  glass_kit:
-  lottie:
-  flutter_svg:
-  google_fonts:
+  shimmer: ^3.0.0
+  glass_kit: ^3.0.0
+  lottie: ^3.1.0
+  flutter_svg: ^2.0.10+1
+  google_fonts: ^6.2.1
 
   # ── LYRICS ────────────────────────────────────────────
-  scrollable_positioned_list:
+  scrollable_positioned_list: ^0.3.8
 
   # ── UTILITIES ─────────────────────────────────────────
-  freezed_annotation:
-  json_annotation:
-  equatable:
-  collection:
-  intl:
-  share_plus:
-  screenshot:
-  url_launcher:
-  package_info_plus:
-  device_info_plus:
+  freezed_annotation: ^2.4.1
+  json_annotation: ^4.9.0
+  equatable: ^2.0.5
+  collection: ^1.18.0
+  intl: ^0.19.0
+  share_plus: ^9.0.0
+  screenshot: ^3.0.0
+  url_launcher: ^6.3.0
+  package_info_plus: ^8.0.0
+  device_info_plus: ^10.1.0
 
 dev_dependencies:
   flutter_test:
     sdk: flutter
-  build_runner:
-  riverpod_generator:
-  freezed:
-  json_serializable:
+  build_runner: ^2.4.9
+  riverpod_generator: ^2.4.0
+  freezed: ^2.5.2
+  json_serializable: ^6.8.0
   hive_generator: ^2.0.1
-  flutter_lints:
-  mockito:
+  flutter_lints: ^4.0.0
+  mockito: ^5.4.4
 
 # For information on the generic Dart part of this file, see the
 # following page: https://dart.dev/tools/pub/pubspec
