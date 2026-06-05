@@ -1,21 +1,38 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:go_router/go_router.dart';
+import '../../../core/router/route_names.dart';
 import '../../../core/theme/pandoos_colors.dart';
 import '../../../core/theme/pandoos_typography.dart';
 import '../../../core/widgets/neon_button.dart';
+import 'auth_notifier.dart';
 
-class SignInScreen extends StatefulWidget {
+class SignInScreen extends ConsumerStatefulWidget {
   const SignInScreen({super.key});
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  ConsumerState<SignInScreen> createState() => _SignInScreenState();
 }
 
-class _SignInScreenState extends State<SignInScreen> {
+class _SignInScreenState extends ConsumerState<SignInScreen> {
   bool _isLoading = false;
 
   @override
   Widget build(BuildContext context) {
+    ref.listen(authNotifierProvider, (previous, next) {
+      if (next is AsyncData && next.value != null) {
+        context.go(RouteNames.home);
+      } else if (next is AsyncError) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(content: Text('Sign in failed: ${next.error}')),
+        );
+      }
+    });
+
+    final authState = ref.watch(authNotifierProvider);
+    final _isLoading = authState.isLoading;
+
     return Scaffold(
       backgroundColor: PandoosColors.background,
       body: Stack(
@@ -105,11 +122,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     isLoading: _isLoading,
                     width: double.infinity,
                     onPressed: () {
-                      setState(() => _isLoading = true);
-                      // TODO: wire to AuthNotifier
-                      Future.delayed(const Duration(seconds: 2), () {
-                        if (mounted) setState(() => _isLoading = false);
-                      });
+                      ref.read(authNotifierProvider.notifier).signInWithGoogle();
                     },
                   ).animate(delay: 300.ms).fadeIn(duration: 400.ms).slideY(begin: 0.2, end: 0),
 

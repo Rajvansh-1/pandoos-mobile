@@ -2,13 +2,15 @@ import 'package:flutter/foundation.dart';
 import 'package:audio_service/audio_service.dart';
 import 'package:just_audio/just_audio.dart';
 import '../models/track.dart';
+import 'stream_resolver.dart';
 
 class PandoosAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandler {
+  final StreamResolver _streamResolver;
   final AudioPlayer _player = AudioPlayer();
   // ignore: deprecated_member_use
   final ConcatenatingAudioSource _playlist = ConcatenatingAudioSource(children: []);
 
-  PandoosAudioHandler() {
+  PandoosAudioHandler(this._streamResolver) {
     _init();
   }
 
@@ -52,22 +54,25 @@ class PandoosAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandle
   }
 
   Future<void> playTrack(Track track) async {
-    // TODO: implement resolving stream url via StreamResolver
-    // For now, just a placeholder implementation
+    final streamUrl = await _streamResolver.resolveStreamUrl(track);
+    final finalTrack = streamUrl != null ? track.copyWith(streamUrl: streamUrl) : track;
+
     final item = MediaItem(
-      id: track.id,
-      title: track.title,
-      artist: track.artist,
-      artUri: Uri.parse(track.albumArt),
-      duration: Duration(seconds: track.duration),
-      extras: {'streamUrl': track.streamUrl},
+      id: finalTrack.id,
+      title: finalTrack.title,
+      artist: finalTrack.artist,
+      artUri: Uri.parse(finalTrack.albumArt),
+      duration: Duration(seconds: finalTrack.duration),
+      extras: {'streamUrl': finalTrack.streamUrl},
     );
     
     mediaItem.add(item);
     
-    if (track.streamUrl != null) {
-      await _player.setUrl(track.streamUrl!);
+    if (finalTrack.streamUrl != null) {
+      await _player.setUrl(finalTrack.streamUrl!);
       play();
+    } else {
+      debugPrint("Could not resolve stream URL for track: ${track.title}");
     }
   }
 

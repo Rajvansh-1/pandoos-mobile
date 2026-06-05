@@ -1,27 +1,52 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:go_router/go_router.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:audio_service/audio_service.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/audio/audio_service_provider.dart';
 import '../../../core/theme/pandoos_colors.dart';
 import '../../../core/theme/pandoos_typography.dart';
+import '../../../core/models/track.dart';
+import '../../library/data/library_repository.dart';
+import 'queue_sheet.dart';
 
-class NowPlayingScreen extends StatefulWidget {
+class NowPlayingScreen extends ConsumerStatefulWidget {
   const NowPlayingScreen({super.key});
 
   @override
-  State<NowPlayingScreen> createState() => _NowPlayingScreenState();
+  ConsumerState<NowPlayingScreen> createState() => _NowPlayingScreenState();
 }
 
-class _NowPlayingScreenState extends State<NowPlayingScreen>
+class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen>
     with SingleTickerProviderStateMixin {
-  bool _isPlaying = false;
-  double _progress = 0.35;
   bool _isLiked = false;
 
   @override
   Widget build(BuildContext context) {
+    final audioHandler = ref.watch(audioHandlerProvider);
+
     return Scaffold(
       backgroundColor: Colors.transparent,
-      body: Stack(
+      body: StreamBuilder<MediaItem?>(
+        stream: audioHandler.mediaItem,
+        builder: (context, mediaSnapshot) {
+          final mediaItem = mediaSnapshot.data;
+          
+          return StreamBuilder<PlaybackState>(
+            stream: audioHandler.playbackState,
+            builder: (context, playbackSnapshot) {
+              final playbackState = playbackSnapshot.data;
+              final isPlaying = playbackState?.playing ?? false;
+              final position = playbackState?.updatePosition ?? Duration.zero;
+              final duration = mediaItem?.duration ?? Duration.zero;
+              
+              double progress = 0.0;
+              if (duration.inMilliseconds > 0) {
+                progress = position.inMilliseconds / duration.inMilliseconds;
+              }
+
+              return Stack(
         children: [
           // Blurred album art background
           Positioned.fill(
@@ -62,20 +87,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
               children: [
                 _buildTopBar(context),
                 const SizedBox(height: 20),
-                _buildAlbumArt(),
+                _buildAlbumArt(mediaItem),
                 const SizedBox(height: 28),
-                _buildTrackInfo(),
+                _buildTrackInfo(mediaItem),
                 const SizedBox(height: 28),
-                _buildSeekBar(),
+                _buildSeekBar(audioHandler, position, duration, progress),
                 const SizedBox(height: 20),
-                _buildControls(),
+                _buildControls(audioHandler, isPlaying),
                 const SizedBox(height: 20),
                 _buildBottomActions(),
               ],
             ),
           ),
         ],
-      ),
+      );
+    },
+    );
+    },
+    ),
     );
   }
 
@@ -123,7 +152,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     );
   }
 
-  Widget _buildAlbumArt() {
+  Widget _buildAlbumArt(MediaItem? mediaItem) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 36),
       child: AspectRatio(
@@ -131,7 +160,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
         child: Container(
           decoration: BoxDecoration(
             borderRadius: BorderRadius.circular(24),
-            gradient: LinearGradient(
+            gradient: const LinearGradient(
               colors: [PandoosColors.primary, PandoosColors.pink],
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
@@ -146,17 +175,24 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
           ),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(24),
-            child: const Center(
-              child: Icon(Icons.music_note_rounded,
-                  color: Colors.white54, size: 80),
-            ),
+            child: mediaItem?.artUri != null
+                ? CachedNetworkImage(
+                    imageUrl: mediaItem!.artUri!.toString(),
+                    fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => const Center(
+                      child: Icon(Icons.music_note_rounded, color: Colors.white54, size: 80),
+                    ),
+                  )
+                : const Center(
+                    child: Icon(Icons.music_note_rounded, color: Colors.white54, size: 80),
+                  ),
           ),
         ),
       ),
     );
   }
 
-  Widget _buildTrackInfo() {
+  Widget _buildTrackInfo(MediaItem? mediaItem) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 28),
       child: Row(
@@ -166,12 +202,12 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text('No Song Playing',
+                Text(mediaItem?.title ?? 'No Song Playing',
                     style: PandoosTypography.h1,
                     maxLines: 1,
                     overflow: TextOverflow.ellipsis),
                 const SizedBox(height: 4),
-                Text('Select a song from Search',
+                Text(mediaItem?.artist ?? 'Select a song from Search',
                     style: PandoosTypography.bodyMedium),
               ],
             ),
@@ -180,6 +216,21 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
             onTap: () {
               HapticFeedback.mediumImpact();
               setState(() => _isLiked = !_isLiked);
+              if (mediaItem != null) {
+                final track = Track(
+                  id: mediaItem.id,
+                  videoId: mediaItem.id,
+                  title: mediaItem.title,
+                  artist: mediaItem.artist ?? '',
+                  albumArt: mediaItem.artUri?.toString() ?? '',
+                  duration: mediaItem.duration?.inSeconds ?? 0,
+                );
+                if (_isLiked) {
+                  ref.read(libraryRepositoryProvider).likeTrack(track);
+                } else {
+                  ref.read(libraryRepositoryProvider).unlikeTrack(track.videoId);
+                }
+              }
             },
             child: AnimatedSwitcher(
               duration: const Duration(milliseconds: 200),
@@ -196,22 +247,31 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     );
   }
 
-  Widget _buildSeekBar() {
+  Widget _buildSeekBar(dynamic audioHandler, Duration position, Duration duration, double progress) {
+    String _formatDuration(Duration d) {
+      final minutes = d.inMinutes;
+      final seconds = d.inSeconds % 60;
+      return '$minutes:${seconds.toString().padLeft(2, '0')}';
+    }
+
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Column(
         children: [
           Slider(
-            value: _progress,
-            onChanged: (v) => setState(() => _progress = v),
+            value: progress.clamp(0.0, 1.0),
+            onChanged: (v) {
+              final newPosition = Duration(milliseconds: (v * duration.inMilliseconds).round());
+              audioHandler.seek(newPosition);
+            },
           ),
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: 8),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text('1:12', style: PandoosTypography.bodySmall),
-                Text('3:24', style: PandoosTypography.bodySmall),
+                Text(_formatDuration(position), style: PandoosTypography.bodySmall),
+                Text(_formatDuration(duration), style: PandoosTypography.bodySmall),
               ],
             ),
           ),
@@ -220,7 +280,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
     );
   }
 
-  Widget _buildControls() {
+  Widget _buildControls(dynamic audioHandler, bool isPlaying) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 20),
       child: Row(
@@ -236,26 +296,30 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
             icon: const Icon(Icons.skip_previous_rounded),
             color: PandoosColors.textPrimary,
             iconSize: 36,
-            onPressed: () {},
+            onPressed: () => audioHandler.skipToPrevious(),
           ),
 
           // Play/pause main button
           GestureDetector(
             onTap: () {
               HapticFeedback.lightImpact();
-              setState(() => _isPlaying = !_isPlaying);
+              if (isPlaying) {
+                audioHandler.pause();
+              } else {
+                audioHandler.play();
+              }
             },
             child: Container(
               width: 68,
               height: 68,
-              decoration: BoxDecoration(
+              decoration: const BoxDecoration(
                 gradient: LinearGradient(
                   colors: [PandoosColors.primary, PandoosColors.accent],
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                 ),
                 shape: BoxShape.circle,
-                boxShadow: const [
+                boxShadow: [
                   BoxShadow(
                     color: Color(0x809C6ADE),
                     blurRadius: 24, offset: Offset(0, 8),
@@ -265,8 +329,8 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
               child: AnimatedSwitcher(
                 duration: const Duration(milliseconds: 200),
                 child: Icon(
-                  _isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
-                  key: ValueKey(_isPlaying),
+                  isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+                  key: ValueKey(isPlaying),
                   color: Colors.white,
                   size: 34,
                 ),
@@ -278,7 +342,7 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
             icon: const Icon(Icons.skip_next_rounded),
             color: PandoosColors.textPrimary,
             iconSize: 36,
-            onPressed: () {},
+            onPressed: () => audioHandler.skipToNext(),
           ),
           IconButton(
             icon: const Icon(Icons.repeat_rounded),
@@ -310,7 +374,14 @@ class _NowPlayingScreenState extends State<NowPlayingScreen>
           IconButton(
             icon: const Icon(Icons.queue_music_rounded),
             color: PandoosColors.textMuted,
-            onPressed: () {},
+            onPressed: () {
+              showModalBottomSheet(
+                context: context,
+                isScrollControlled: true,
+                backgroundColor: Colors.transparent,
+                builder: (context) => const QueueSheet(),
+              );
+            },
           ),
           IconButton(
             icon: const Icon(Icons.download_outlined),

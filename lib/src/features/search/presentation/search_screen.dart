@@ -1,17 +1,21 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/audio/audio_service_provider.dart';
+import 'search_notifier.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/pandoos_colors.dart';
 import '../../../core/theme/pandoos_typography.dart';
 import '../../../core/widgets/glass_card.dart';
 
-class SearchScreen extends StatefulWidget {
+class SearchScreen extends ConsumerStatefulWidget {
   const SearchScreen({super.key});
 
   @override
-  State<SearchScreen> createState() => _SearchScreenState();
+  ConsumerState<SearchScreen> createState() => _SearchScreenState();
 }
 
-class _SearchScreenState extends State<SearchScreen> {
+class _SearchScreenState extends ConsumerState<SearchScreen> {
   final TextEditingController _controller = TextEditingController();
   String _query = '';
 
@@ -52,7 +56,14 @@ class _SearchScreenState extends State<SearchScreen> {
   Widget _buildSearchBar() {
     return TextField(
       controller: _controller,
-      onChanged: (val) => setState(() => _query = val),
+      onChanged: (val) {
+        setState(() => _query = val);
+        if (val.trim().length > 2) {
+          ref.read(searchNotifierProvider.notifier).search(val);
+        } else if (val.isEmpty) {
+          ref.read(searchNotifierProvider.notifier).clear();
+        }
+      },
       style: PandoosTypography.bodyLarge,
       decoration: InputDecoration(
         hintText: 'Songs, artists, albums...',
@@ -63,6 +74,7 @@ class _SearchScreenState extends State<SearchScreen> {
                 onPressed: () {
                   _controller.clear();
                   setState(() => _query = '');
+                  ref.read(searchNotifierProvider.notifier).clear();
                 },
               )
             : null,
@@ -99,7 +111,11 @@ class _SearchScreenState extends State<SearchScreen> {
             itemBuilder: (_, i) {
               final (label, color, icon) = categories[i];
               return GestureDetector(
-                onTap: () => setState(() => _query = label),
+                onTap: () {
+                  _controller.text = label;
+                  setState(() => _query = label);
+                  ref.read(searchNotifierProvider.notifier).search(label);
+                },
                 child: GlassCard(
                   borderRadius: 14,
                   fillColor: color.withValues(alpha: 0.15),
@@ -124,12 +140,7 @@ class _SearchScreenState extends State<SearchScreen> {
   }
 
   Widget _buildSearchResults() {
-    // Placeholder results — will be wired to InnerTube API in next step
-    final results = List.generate(8, (i) => (
-      'Song result ${i + 1} for "$_query"',
-      'Artist ${i + 1}',
-      '${2 + i % 3}:${(15 + i * 7) % 60}'.padLeft(4, '0'),
-    ));
+    final searchState = ref.watch(searchNotifierProvider);
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -137,30 +148,47 @@ class _SearchScreenState extends State<SearchScreen> {
         Text('Results for "$_query"', style: PandoosTypography.h3),
         const SizedBox(height: 12),
         Expanded(
-          child: ListView.separated(
-            itemCount: results.length,
-            separatorBuilder: (_, _) => Divider(
-              color: PandoosColors.glassBorder, height: 1, indent: 64,
-            ),
-            itemBuilder: (_, i) {
-              final (title, artist, dur) = results[i];
-              return ListTile(
-                contentPadding: const EdgeInsets.symmetric(vertical: 4),
-                leading: ClipRRect(
-                  borderRadius: BorderRadius.circular(8),
-                  child: Container(
-                    width: 48, height: 48,
-                    color: PandoosColors.surfaceHigh,
-                    child: const Icon(Icons.music_note_rounded,
-                        color: PandoosColors.textMuted),
-                  ),
+          child: searchState.when(
+            data: (tracks) {
+              if (tracks.isEmpty) {
+                return Center(
+                  child: Text('No results found.', style: PandoosTypography.bodyMedium),
+                );
+              }
+              return ListView.separated(
+                itemCount: tracks.length,
+                separatorBuilder: (_, _) => const Divider(
+                  color: PandoosColors.glassBorder, height: 1, indent: 64,
                 ),
-                title: Text(title, style: PandoosTypography.labelLarge),
-                subtitle: Text(artist, style: PandoosTypography.caption),
-                trailing: Text(dur, style: PandoosTypography.bodySmall),
-                onTap: () {},
-              ).animate(delay: (i * 40).ms).fadeIn(duration: 300.ms);
+                itemBuilder: (_, i) {
+                  final track = tracks[i];
+                  final durStr = '${track.duration ~/ 60}:${(track.duration % 60).toString().padLeft(2, '0')}';
+                  return ListTile(
+                    contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                    leading: ClipRRect(
+                      borderRadius: BorderRadius.circular(8),
+                      child: CachedNetworkImage(
+                        imageUrl: track.albumArt,
+                        width: 48, height: 48, fit: BoxFit.cover,
+                        errorWidget: (_, __, ___) => Container(
+                          color: PandoosColors.surfaceHigh,
+                          child: const Icon(Icons.music_note_rounded, color: PandoosColors.textMuted),
+                        ),
+                      ),
+                    ),
+                    title: Text(track.title, style: PandoosTypography.labelLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    subtitle: Text(track.artist, style: PandoosTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                    trailing: Text(durStr, style: PandoosTypography.bodySmall),
+                    onTap: () {
+                      ref.read(audioHandlerProvider).playTrack(track);
+                      // TODO: Navigate to player screen or show mini-player
+                    },
+                  ).animate(delay: (i * 40).ms).fadeIn(duration: 300.ms);
+                },
+              );
             },
+            loading: () => const Center(child: CircularProgressIndicator(color: PandoosColors.primary)),
+            error: (e, _) => Center(child: Text('Error: $e', style: PandoosTypography.bodyMedium)),
           ),
         ),
       ],

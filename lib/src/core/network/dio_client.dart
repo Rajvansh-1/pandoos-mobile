@@ -2,6 +2,9 @@ import 'package:dio/dio.dart';
 import 'package:dio_cache_interceptor/dio_cache_interceptor.dart';
 import 'package:dio_smart_retry/dio_smart_retry.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+
+final dioProvider = Provider<Dio>((ref) => DioClient().dio);
 
 class DioClient {
   static final DioClient _instance = DioClient._internal();

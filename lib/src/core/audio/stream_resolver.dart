@@ -1,10 +1,17 @@
+import 'package:dio/dio.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/dio_client.dart';
 import '../network/api_endpoints.dart';
 import '../models/track.dart';
 
+final streamResolverProvider = Provider<StreamResolver>((ref) {
+  return StreamResolver(ref.watch(dioProvider));
+});
+
 class StreamResolver {
-  final DioClient _dioClient = DioClient();
+  final Dio _dio;
+  StreamResolver(this._dio);
 
   Future<String?> resolveStreamUrl(Track track, {int quality = 128}) async {
     // 1. Check Isar offline DB (placeholder)
@@ -12,10 +19,8 @@ class StreamResolver {
     if (localUri != null) return localUri;
 
     // 2 & 3. Check Vercel Edge Cache & Call /api/stream
-    // The Vercel Edge Function handles Upstash Redis cache checking internally.
-    // So we just call the endpoint.
     try {
-      final response = await _dioClient.dio.get(
+      final response = await _dio.get(
         ApiEndpoints.stream(track.videoId, quality)
       );
       
