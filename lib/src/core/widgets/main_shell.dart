@@ -6,6 +6,7 @@ import '../audio/audio_service_provider.dart';
 import '../router/route_names.dart';
 import '../theme/pandoos_colors.dart';
 import 'mini_player.dart';
+import '../../features/player/data/progress_sync_service.dart';
 
 /// Persistent shell with bottom navigation + mini player slot
 class MainShell extends ConsumerWidget {
@@ -22,6 +23,9 @@ class MainShell extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    // Keep sync service alive
+    ref.watch(progressSyncServiceProvider);
+    
     final currentIndex = _locationToIndex(context);
     final audioHandler = ref.watch(audioHandlerProvider);
 

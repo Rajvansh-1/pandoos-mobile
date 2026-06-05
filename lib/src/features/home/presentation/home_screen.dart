@@ -1,14 +1,19 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_animate/flutter_animate.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/audio/audio_service_provider.dart';
 import '../../../core/theme/pandoos_colors.dart';
 import '../../../core/theme/pandoos_typography.dart';
 import '../../../core/widgets/glass_card.dart';
+import 'home_notifier.dart';
+import 'continue_listening_banner.dart';
 
-class HomeScreen extends StatelessWidget {
+class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
       backgroundColor: PandoosColors.background,
       body: CustomScrollView(
@@ -22,7 +27,7 @@ class HomeScreen extends StatelessWidget {
                 children: [
                   _buildGreeting(),
                   const SizedBox(height: 24),
-                  _buildFeaturedBanner(context),
+                  const ContinueListeningBanner(),
                   const SizedBox(height: 28),
                   _buildSectionHeader('Recently Played'),
                   const SizedBox(height: 14),
@@ -30,7 +35,7 @@ class HomeScreen extends StatelessWidget {
                   const SizedBox(height: 28),
                   _buildSectionHeader('Trending Now'),
                   const SizedBox(height: 14),
-                  _buildTrackList(),
+                  _buildTrackList(context, ref),
                   const SizedBox(height: 120), // bottom padding for mini player
                 ],
               ),
@@ -104,75 +109,7 @@ class HomeScreen extends StatelessWidget {
     ).animate().fadeIn(duration: 400.ms).slideY(begin: 0.1, end: 0);
   }
 
-  Widget _buildFeaturedBanner(BuildContext context) {
-    return GlassCard(
-      borderRadius: 20,
-      padding: const EdgeInsets.all(20),
-      fillColor: PandoosColors.primaryGlow,
-      child: Row(
-        children: [
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-                  decoration: BoxDecoration(
-                    color: PandoosColors.primary.withValues(alpha: 0.3),
-                    borderRadius: BorderRadius.circular(20),
-                  ),
-                  child: Text('FEATURED', style: PandoosTypography.labelSmall.copyWith(
-                    color: PandoosColors.primary,
-                  )),
-                ),
-                const SizedBox(height: 10),
-                Text('Your Daily Mix', style: PandoosTypography.h2),
-                const SizedBox(height: 4),
-                Text('32 songs curated just for you',
-                    style: PandoosTypography.bodyMedium),
-                const SizedBox(height: 16),
-                Container(
-                  height: 40,
-                  width: 110,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [
-                      PandoosColors.primary, PandoosColors.accent
-                    ]),
-                    borderRadius: BorderRadius.circular(20),
-                    boxShadow: [BoxShadow(
-                      color: PandoosColors.primary.withValues(alpha: 0.4),
-                      blurRadius: 12, offset: const Offset(0, 4),
-                    )],
-                  ),
-                  child: Center(child: Text('Play All',
-                    style: PandoosTypography.labelLarge.copyWith(color: Colors.white),
-                  )),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 12),
-          Container(
-            width: 90,
-            height: 90,
-            decoration: BoxDecoration(
-              gradient: const LinearGradient(
-                colors: [PandoosColors.primary, PandoosColors.pink],
-                begin: Alignment.topLeft,
-                end: Alignment.bottomRight,
-              ),
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [BoxShadow(
-                color: PandoosColors.primary.withValues(alpha: 0.5),
-                blurRadius: 20, offset: const Offset(0, 8),
-              )],
-            ),
-            child: const Icon(Icons.queue_music_rounded, color: Colors.white, size: 40),
-          ),
-        ],
-      ),
-    ).animate().fadeIn(delay: 100.ms, duration: 500.ms).slideY(begin: 0.1, end: 0);
-  }
+  // _buildFeaturedBanner is replaced by ContinueListeningBanner in build()
 
   Widget _buildSectionHeader(String title) {
     return Row(
@@ -227,53 +164,55 @@ class HomeScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildTrackList() {
-    final tracks = [
-      ('Blinding Lights', 'The Weeknd', '3:20'),
-      ('As It Was', 'Harry Styles', '2:47'),
-      ('Anti-Hero', 'Taylor Swift', '3:21'),
-      ('Unholy', 'Sam Smith', '2:37'),
-      ('Flowers', 'Miley Cyrus', '3:21'),
-    ];
+  Widget _buildTrackList(BuildContext context, WidgetRef ref) {
+    final homeState = ref.watch(homeNotifierProvider);
 
-    return Column(
-      children: List.generate(tracks.length, (i) {
-        final (title, artist, dur) = tracks[i];
-        return Padding(
-          padding: const EdgeInsets.only(bottom: 4),
-          child: ListTile(
-            contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
-            leading: ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: Container(
-                width: 48, height: 48,
-                decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    colors: [
-                      PandoosColors.primary.withValues(alpha: 0.6),
-                      PandoosColors.accent.withValues(alpha: 0.4),
-                    ],
+    return homeState.when(
+      data: (tracks) {
+        if (tracks.isEmpty) {
+          return const Center(child: Text('No trending tracks found'));
+        }
+        return Column(
+          children: List.generate(tracks.length, (i) {
+            final track = tracks[i];
+            final durStr = '${track.duration ~/ 60}:${(track.duration % 60).toString().padLeft(2, '0')}';
+            
+            return Padding(
+              padding: const EdgeInsets.only(bottom: 4),
+              child: ListTile(
+                contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 2),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: track.albumArt,
+                    width: 48, height: 48, fit: BoxFit.cover,
+                    errorWidget: (_, __, ___) => Container(
+                      color: PandoosColors.surfaceHigh,
+                      child: const Icon(Icons.music_note_rounded, color: PandoosColors.textMuted),
+                    ),
                   ),
                 ),
-                child: const Icon(Icons.music_note_rounded,
-                    color: Colors.white70, size: 22),
-              ),
-            ),
-            title: Text(title, style: PandoosTypography.labelLarge),
-            subtitle: Text(artist, style: PandoosTypography.caption),
-            trailing: Row(
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text(dur, style: PandoosTypography.bodySmall),
-                const SizedBox(width: 8),
-                const Icon(Icons.more_vert_rounded,
-                    color: PandoosColors.textMuted, size: 18),
-              ],
-            ),
-            onTap: () {},
-          ).animate(delay: (i * 50).ms).fadeIn(duration: 350.ms),
+                title: Text(track.title, style: PandoosTypography.labelLarge, maxLines: 1, overflow: TextOverflow.ellipsis),
+                subtitle: Text(track.artist, style: PandoosTypography.caption, maxLines: 1, overflow: TextOverflow.ellipsis),
+                trailing: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(durStr, style: PandoosTypography.bodySmall),
+                    const SizedBox(width: 8),
+                    const Icon(Icons.more_vert_rounded,
+                        color: PandoosColors.textMuted, size: 18),
+                  ],
+                ),
+                onTap: () {
+                  ref.read(audioHandlerProvider).playTrack(track);
+                },
+              ).animate(delay: (i * 50).ms).fadeIn(duration: 350.ms),
+            );
+          }),
         );
-      }),
+      },
+      loading: () => const Center(child: CircularProgressIndicator(color: PandoosColors.primary)),
+      error: (e, _) => Center(child: Text('Error: $e')),
     );
   }
 }

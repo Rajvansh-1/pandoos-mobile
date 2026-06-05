@@ -9,6 +9,7 @@ import '../../download/data/download_repository.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import '../../../core/audio/audio_service_provider.dart';
 import '../../../core/models/track.dart';
+import 'library_notifier.dart';
 
 class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
@@ -80,68 +81,108 @@ class _LibraryScreenState extends ConsumerState<LibraryScreen>
   }
 
   Widget _buildLikedSongs() {
-    return ListView(
-      padding: const EdgeInsets.all(20),
-      children: [
-        // Liked songs header card
-        GlassCard(
-          borderRadius: 16,
-          padding: const EdgeInsets.all(20),
-          fillColor: PandoosColors.pinkGlow,
-          borderColor: PandoosColors.pink.withValues(alpha: 0.3),
-          child: Row(
-            children: [
-              Container(
-                width: 64,
-                height: 64,
-                decoration: BoxDecoration(
-                  gradient: const LinearGradient(
-                    colors: [PandoosColors.pink, PandoosColors.primary],
-                  ),
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: const Icon(Icons.favorite_rounded,
-                    color: Colors.white, size: 30),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text('Liked Songs', style: PandoosTypography.h2),
-                    const SizedBox(height: 4),
-                    Text('0 songs', style: PandoosTypography.caption),
-                  ],
-                ),
-              ),
-              NeonButton(
-                label: 'Play',
-                icon: Icons.play_arrow_rounded,
-                glowColor: PandoosColors.pink,
-                onPressed: () {},
-                width: 80,
-              ),
-            ],
-          ),
-        ).animate().fadeIn(duration: 400.ms),
+    final libraryState = ref.watch(libraryNotifierProvider);
 
-        const SizedBox(height: 24),
-        Center(
-          child: Column(
-            children: [
-              const Icon(Icons.favorite_border_rounded,
-                  color: PandoosColors.textMuted, size: 64),
-              const SizedBox(height: 16),
-              Text('No liked songs yet',
-                  style: PandoosTypography.h3.copyWith(
-                      color: PandoosColors.textMuted)),
-              const SizedBox(height: 8),
-              Text('Songs you like will appear here.',
-                  style: PandoosTypography.bodyMedium),
-            ],
-          ).animate(delay: 200.ms).fadeIn(duration: 500.ms),
-        ),
-      ],
+    return libraryState.when(
+      data: (tracks) {
+        if (tracks.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                const Icon(Icons.favorite_border_rounded,
+                    color: PandoosColors.textMuted, size: 64),
+                const SizedBox(height: 16),
+                Text('No liked songs yet',
+                    style: PandoosTypography.h3.copyWith(
+                        color: PandoosColors.textMuted)),
+                const SizedBox(height: 8),
+                Text('Songs you like will appear here.',
+                    style: PandoosTypography.bodyMedium),
+              ],
+            ).animate().fadeIn(duration: 500.ms),
+          );
+        }
+
+        return ListView(
+          padding: const EdgeInsets.all(20),
+          children: [
+            // Liked songs header card
+            GlassCard(
+              borderRadius: 16,
+              padding: const EdgeInsets.all(20),
+              fillColor: PandoosColors.pinkGlow,
+              borderColor: PandoosColors.pink.withValues(alpha: 0.3),
+              child: Row(
+                children: [
+                  Container(
+                    width: 64,
+                    height: 64,
+                    decoration: BoxDecoration(
+                      gradient: const LinearGradient(
+                        colors: [PandoosColors.pink, PandoosColors.primary],
+                      ),
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    child: const Icon(Icons.favorite_rounded,
+                        color: Colors.white, size: 30),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text('Liked Songs', style: PandoosTypography.h2),
+                        const SizedBox(height: 4),
+                        Text('${tracks.length} songs', style: PandoosTypography.caption),
+                      ],
+                    ),
+                  ),
+                  NeonButton(
+                    label: 'Play',
+                    icon: Icons.play_arrow_rounded,
+                    glowColor: PandoosColors.pink,
+                    onPressed: () {
+                       ref.read(audioHandlerProvider).playTrack(tracks.first);
+                    },
+                    width: 80,
+                  ),
+                ],
+              ),
+            ).animate().fadeIn(duration: 400.ms),
+            const SizedBox(height: 16),
+            ...List.generate(tracks.length, (index) {
+              final track = tracks[index];
+              final durStr = '${track.duration ~/ 60}:${(track.duration % 60).toString().padLeft(2, '0')}';
+              
+              return ListTile(
+                contentPadding: const EdgeInsets.symmetric(vertical: 4),
+                leading: ClipRRect(
+                  borderRadius: BorderRadius.circular(8),
+                  child: CachedNetworkImage(
+                    imageUrl: track.albumArt,
+                    width: 48, height: 48, fit: BoxFit.cover,
+                  ),
+                ),
+                title: Text(track.title, style: PandoosTypography.labelLarge, maxLines: 1),
+                subtitle: Text(track.artist, style: PandoosTypography.caption, maxLines: 1),
+                trailing: IconButton(
+                  icon: const Icon(Icons.favorite_rounded, color: PandoosColors.primary),
+                  onPressed: () {
+                    ref.read(libraryNotifierProvider.notifier).unlikeTrack(track.videoId);
+                  },
+                ),
+                onTap: () {
+                  ref.read(audioHandlerProvider).playTrack(track);
+                },
+              ).animate(delay: (index * 40).ms).fadeIn();
+            }),
+            const SizedBox(height: 120), // Mini player padding
+          ],
+        );
+      },
+      loading: () => const Center(child: CircularProgressIndicator(color: PandoosColors.primary)),
+      error: (e, _) => Center(child: Text('Error: $e')),
     );
   }
 
