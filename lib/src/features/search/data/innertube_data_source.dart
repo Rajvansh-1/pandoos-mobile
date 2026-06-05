@@ -18,18 +18,35 @@ class InnertubeDataSource {
       final response = await _dio.get(ApiEndpoints.search(query, 'song'));
       
       if (response.statusCode == 200) {
-        final List<dynamic> data = response.data;
-        return data.map((json) {
+        final Map<String, dynamic> data = response.data;
+        final List<dynamic> items = data['items'] ?? [];
+        
+        return items.map((item) {
+          final id = item['id'];
+          final snippet = item['snippet'];
+          
+          String videoId = id is Map ? id['videoId'] : id;
+          
+          // Try to get best thumbnail
+          String thumbnail = '';
+          if (snippet['thumbnails'] != null && snippet['thumbnails'] is List && snippet['thumbnails'].isNotEmpty) {
+            thumbnail = snippet['thumbnails'].last['url'] ?? '';
+          } else if (snippet['thumbnails'] != null && snippet['thumbnails'] is Map) {
+             // Fallback if thumbnails is a map (like YouTube Data API)
+             final thumbs = snippet['thumbnails'];
+             thumbnail = thumbs['high']?['url'] ?? thumbs['medium']?['url'] ?? thumbs['default']?['url'] ?? '';
+          }
+
           return Track(
-            id: json['videoId'] as String,
-            videoId: json['videoId'] as String,
-            title: json['title'] as String,
-            artist: (json['artists'] as List).isNotEmpty ? json['artists'][0]['name'] : 'Unknown Artist',
-            albumArt: (json['thumbnails'] as List).last['url'] as String,
-            duration: json['duration'] != null ? _parseDuration(json['duration']['text']) : 0,
-            channelTitle: (json['artists'] as List).isNotEmpty ? json['artists'][0]['name'] : null,
-            artistId: (json['artists'] as List).isNotEmpty ? json['artists'][0]['id'] : null,
-            albumId: json['album'] != null ? json['album']['id'] : null,
+            id: videoId,
+            videoId: videoId,
+            title: snippet['title'] ?? 'Unknown Title',
+            artist: snippet['channelTitle'] ?? 'Unknown Artist',
+            albumArt: thumbnail,
+            duration: snippet['duration'] != null ? _parseDuration(snippet['duration']) : 0,
+            channelTitle: snippet['channelTitle'],
+            artistId: snippet['artistId'],
+            albumId: snippet['albumId'],
           );
         }).toList();
       }
