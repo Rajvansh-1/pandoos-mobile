@@ -1,18 +1,23 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../../../core/theme/pandoos_colors.dart';
 import '../../../core/theme/pandoos_typography.dart';
 import '../../../core/widgets/glass_card.dart';
 import '../../../core/widgets/neon_button.dart';
+import '../../download/data/download_repository.dart';
+import 'package:cached_network_image/cached_network_image.dart';
+import '../../../core/audio/audio_service_provider.dart';
+import '../../../core/models/track.dart';
 
-class LibraryScreen extends StatefulWidget {
+class LibraryScreen extends ConsumerStatefulWidget {
   const LibraryScreen({super.key});
 
   @override
-  State<LibraryScreen> createState() => _LibraryScreenState();
+  ConsumerState<LibraryScreen> createState() => _LibraryScreenState();
 }
 
-class _LibraryScreenState extends State<LibraryScreen>
+class _LibraryScreenState extends ConsumerState<LibraryScreen>
     with SingleTickerProviderStateMixin {
   late TabController _tabs;
 
@@ -165,21 +170,59 @@ class _LibraryScreenState extends State<LibraryScreen>
   }
 
   Widget _buildDownloads() {
-    return Center(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          const Icon(Icons.download_rounded,
-              color: PandoosColors.textMuted, size: 64),
-          const SizedBox(height: 16),
-          Text('No downloads yet',
-              style: PandoosTypography.h3.copyWith(
-                  color: PandoosColors.textMuted)),
-          const SizedBox(height: 8),
-          Text('Download songs to listen offline.',
-              style: PandoosTypography.bodyMedium),
-        ],
-      ).animate().fadeIn(duration: 500.ms),
+    final downloadRepo = ref.watch(downloadRepositoryProvider);
+    final downloads = downloadRepo.getAllTracks();
+
+    if (downloads.isEmpty) {
+      return Center(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            const Icon(Icons.download_rounded,
+                color: PandoosColors.textMuted, size: 64),
+            const SizedBox(height: 16),
+            Text('No downloads yet',
+                style: PandoosTypography.h3.copyWith(
+                    color: PandoosColors.textMuted)),
+            const SizedBox(height: 8),
+            Text('Download songs to listen offline.',
+                style: PandoosTypography.bodyMedium),
+          ],
+        ).animate().fadeIn(duration: 500.ms),
+      );
+    }
+
+    return ListView.builder(
+      padding: const EdgeInsets.all(20),
+      itemCount: downloads.length,
+      itemBuilder: (context, index) {
+        final track = downloads[index];
+        return ListTile(
+          leading: ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: CachedNetworkImage(
+              imageUrl: track.albumArt,
+              width: 50,
+              height: 50,
+              fit: BoxFit.cover,
+            ),
+          ),
+          title: Text(track.title, style: PandoosTypography.h3),
+          subtitle: Text(track.artist, style: PandoosTypography.bodyMedium),
+          trailing: const Icon(Icons.download_done, color: PandoosColors.primary),
+          onTap: () {
+            final playTrack = Track(
+              id: track.videoId,
+              videoId: track.videoId,
+              title: track.title,
+              artist: track.artist,
+              albumArt: track.albumArt,
+              duration: 0,
+            );
+            ref.read(audioHandlerProvider).playTrack(playTrack);
+          },
+        );
+      },
     );
   }
 }

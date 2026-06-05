@@ -4,17 +4,23 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../network/dio_client.dart';
 import '../network/api_endpoints.dart';
 import '../models/track.dart';
+import '../../features/download/data/download_repository.dart';
 
 final streamResolverProvider = Provider<StreamResolver>((ref) {
-  return StreamResolver(ref.watch(dioProvider));
+  return StreamResolver(
+    ref.watch(dioProvider),
+    ref.watch(downloadRepositoryProvider),
+  );
 });
 
 class StreamResolver {
   final Dio _dio;
-  StreamResolver(this._dio);
+  final DownloadRepository _downloadRepo;
+  
+  StreamResolver(this._dio, this._downloadRepo);
 
   Future<String?> resolveStreamUrl(Track track, {int quality = 128}) async {
-    // 1. Check Isar offline DB (placeholder)
+    // 1. Check Offline DB (Hive)
     final localUri = await _checkOffline(track.videoId);
     if (localUri != null) return localUri;
 
@@ -36,7 +42,10 @@ class StreamResolver {
   }
 
   Future<String?> _checkOffline(String videoId) async {
-    // TODO: query Isar to find downloaded file URI
+    final track = _downloadRepo.getTrack(videoId);
+    if (track != null) {
+      return track.localFilePath;
+    }
     return null;
   }
 }

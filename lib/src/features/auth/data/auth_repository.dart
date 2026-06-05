@@ -1,5 +1,5 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_sign_in/google_sign_in.dart' as google;
+import 'package:google_sign_in/google_sign_in.dart';
 import 'package:supabase_flutter/supabase_flutter.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import '../../../core/supabase/supabase_client.dart';
@@ -19,7 +19,7 @@ class AuthRepository {
     
     final webClientId = dotenv.env['GOOGLE_CLIENT_ID'] ?? '';
     
-    final google.GoogleSignIn googleSignIn = google.GoogleSignIn(
+    final GoogleSignIn googleSignIn = GoogleSignIn(
       serverClientId: webClientId,
       scopes: ['email', 'profile'],
     );
@@ -56,7 +56,7 @@ class AuthRepository {
   Future<void> signOut() async {
     await _supabaseService.init();
     await _supabaseService.client.auth.signOut();
-    final google.GoogleSignIn googleSignIn = google.GoogleSignIn();
+    final GoogleSignIn googleSignIn = GoogleSignIn();
     await googleSignIn.signOut();
   }
 }

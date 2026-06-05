@@ -9,7 +9,9 @@ import '../../../core/theme/pandoos_colors.dart';
 import '../../../core/theme/pandoos_typography.dart';
 import '../../../core/models/track.dart';
 import '../../library/data/library_repository.dart';
+import '../../download/data/download_manager.dart';
 import 'queue_sheet.dart';
+import 'panda_player_view.dart';
 
 class NowPlayingScreen extends ConsumerStatefulWidget {
   const NowPlayingScreen({super.key});
@@ -87,7 +89,7 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen>
               children: [
                 _buildTopBar(context),
                 const SizedBox(height: 20),
-                _buildAlbumArt(mediaItem),
+                const PandaPlayerView(),
                 const SizedBox(height: 28),
                 _buildTrackInfo(mediaItem),
                 const SizedBox(height: 28),
@@ -383,10 +385,40 @@ class _NowPlayingScreenState extends ConsumerState<NowPlayingScreen>
               );
             },
           ),
-          IconButton(
-            icon: const Icon(Icons.download_outlined),
-            color: PandoosColors.textMuted,
-            onPressed: () {},
+          Consumer(
+            builder: (context, ref, child) {
+              return IconButton(
+                icon: const Icon(Icons.download_outlined),
+                color: PandoosColors.textMuted,
+                onPressed: () async {
+                  final audioHandler = ref.read(audioHandlerProvider);
+                  final mediaItem = audioHandler.mediaItem.value;
+                  if (mediaItem != null) {
+                    final track = Track(
+                      id: mediaItem.id,
+                      videoId: mediaItem.id,
+                      title: mediaItem.title,
+                      artist: mediaItem.artist ?? '',
+                      albumArt: mediaItem.artUri?.toString() ?? '',
+                      duration: mediaItem.duration?.inSeconds ?? 0,
+                    );
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Downloading track...'))
+                    );
+                    try {
+                      await ref.read(downloadManagerProvider).downloadTrack(track);
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        const SnackBar(content: Text('Download complete!'))
+                      );
+                    } catch (e) {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text('Download failed: $e'))
+                      );
+                    }
+                  }
+                },
+              );
+            }
           ),
         ],
       ),

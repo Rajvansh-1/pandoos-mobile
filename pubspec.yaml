@@ -44,8 +44,7 @@ dependencies:
   just_waveform:
 
   # ── PANDA EMOTION ENGINE ─────────────────────────────
-  # rive: temporarily removed - rive_native 0.1.7 has a broken setup script
-  # Will be added back with a compatible version in Phase 2
+  rive: ^0.13.4
   flutter_animate:
   flutter_haptic_feedback:
 
@@ -62,9 +61,8 @@ dependencies:
 
   # ── LOCAL STORAGE (OFFLINE FIRST) ────────────────────
   hive_flutter:
-  # isar + isar_flutter_libs temporarily removed - isar_flutter_libs 3.1.0+1
-  # doesn't set namespace in build.gradle, incompatible with AGP 8+
-  # Will be added back with isar 4.x in Phase 2
+  isar: ^4.0.0-dev.14
+  isar_flutter_libs: ^4.0.0-dev.14
   path_provider:
 
   # ── IMAGES & MEDIA ────────────────────────────────────
@@ -101,7 +99,7 @@ dev_dependencies:
   riverpod_generator:
   freezed:
   json_serializable:
-  # isar_generator temporarily removed along with isar
+  hive_generator: ^2.0.1
   flutter_lints:
   mockito:
 

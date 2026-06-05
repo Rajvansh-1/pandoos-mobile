@@ -3,6 +3,7 @@ import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'src/app.dart';
+import 'src/features/download/data/download_repository.dart';
 
 Future<void> bootstrap() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -16,6 +17,10 @@ Future<void> bootstrap() async {
     await Hive.initFlutter();
     await Hive.openBox('settings');
     await Hive.openBox('search_history');
+    if (!Hive.isAdapterRegistered(1)) {
+      Hive.registerAdapter(DownloadTrackAdapter());
+    }
+    await Hive.openBox<DownloadTrack>('offline_tracks');
     debugPrint('[Bootstrap] Hive initialized ✓');
 
     // 3. Supabase — deferred until auth is needed
