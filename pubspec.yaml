@@ -56,7 +56,7 @@ dependencies:
   dio: ^5.4.3
   dio_cache_interceptor: ^3.5.0
   dio_smart_retry: ^6.0.0
-  connectivity_plus: ^6.0.3
+  connectivity_plus: ^7.1.1
   flutter_dotenv: ^5.1.0
 
   # ── LOCAL STORAGE (OFFLINE FIRST) ────────────────────
@@ -84,11 +84,11 @@ dependencies:
   equatable: ^2.0.5
   collection: ^1.18.0
   intl: ^0.19.0
-  share_plus: ^9.0.0
+  share_plus: 13.1.0
   screenshot: ^3.0.0
   url_launcher: ^6.3.0
-  package_info_plus: ^8.0.0
-  device_info_plus: ^10.1.0
+  package_info_plus: 10.1.0
+  device_info_plus: 13.1.0
 
 dev_dependencies:
   flutter_test:
