@@ -2,16 +2,16 @@ import 'dart:ui';
 import 'package:flutter/material.dart';
 import '../theme/pandoos_colors.dart';
 
-/// A glassmorphism card with frosted blur + subtle border
+/// A premium glassmorphism card that matches the Web App exactly
 class GlassCard extends StatelessWidget {
   const GlassCard({
     super.key,
     required this.child,
     this.padding,
     this.borderRadius = 16,
-    this.blur = 12,
-    this.fillColor = PandoosColors.glassLight,
-    this.borderColor = PandoosColors.glassBorder,
+    this.blur = 20,
+    this.fillColor,
+    this.borderColor,
     this.borderWidth = 1,
     this.width,
     this.height,
@@ -21,8 +21,8 @@ class GlassCard extends StatelessWidget {
   final EdgeInsetsGeometry? padding;
   final double borderRadius;
   final double blur;
-  final Color fillColor;
-  final Color borderColor;
+  final Color? fillColor;
+  final Color? borderColor;
   final double borderWidth;
   final double? width;
   final double? height;
@@ -36,11 +36,14 @@ class GlassCard extends StatelessWidget {
         child: Container(
           width: width,
           height: height,
-          padding: padding,
+          padding: padding ?? EdgeInsets.zero,
           decoration: BoxDecoration(
-            color: fillColor,
+            color: fillColor ?? Colors.white.withValues(alpha: 0.05),
             borderRadius: BorderRadius.circular(borderRadius),
-            border: Border.all(color: borderColor, width: borderWidth),
+            border: Border.all(
+              color: borderColor ?? Colors.white.withValues(alpha: 0.1),
+              width: borderWidth,
+            ),
           ),
           child: child,
         ),
@@ -48,4 +51,3 @@ class GlassCard extends StatelessWidget {
     );
   }
 }
-

@@ -30,21 +30,21 @@ class MiniPlayer extends StatelessWidget {
     return GestureDetector(
       onTap: () => context.push(RouteNames.nowPlaying),
       child: ClipRRect(
+        borderRadius: BorderRadius.circular(16),
         child: BackdropFilter(
           filter: ImageFilter.blur(sigmaX: 20, sigmaY: 20),
           child: Container(
-            height: 68,
-            decoration: const BoxDecoration(
-              color: PandoosColors.glassLight,
-              border: Border(
-                top: BorderSide(color: PandoosColors.glassBorder, width: 0.5),
-              ),
+            height: 60,
+            decoration: BoxDecoration(
+              color: PandoosColors.surface.withValues(alpha: 0.6),
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
             ),
             child: Stack(
               children: [
-                // Progress bar at top
+                // Progress bar at bottom
                 Positioned(
-                  top: 0, left: 0, right: 0,
+                  bottom: 0, left: 0, right: 0,
                   child: LinearProgressIndicator(
                     value: progress,
                     backgroundColor: Colors.transparent,
@@ -54,12 +54,12 @@ class MiniPlayer extends StatelessWidget {
                 ),
 
                 Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: const EdgeInsets.symmetric(horizontal: 8),
                   child: Row(
                     children: [
                       // Album art
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(10),
                         child: CachedNetworkImage(
                           imageUrl: albumArt,
                           width: 44,
@@ -96,7 +96,7 @@ class MiniPlayer extends StatelessWidget {
                             ),
                             const SizedBox(height: 2),
                             Text(artist,
-                              style: PandoosTypography.caption,
+                              style: PandoosTypography.labelSmall.copyWith(color: Colors.white54),
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),
@@ -108,28 +108,22 @@ class MiniPlayer extends StatelessWidget {
                       GestureDetector(
                         onTap: onPlayPause,
                         child: Container(
-                          width: 40,
-                          height: 40,
-                          decoration: BoxDecoration(
-                            color: PandoosColors.primary.withValues(alpha: 0.15),
+                          width: 36,
+                          height: 36,
+                          decoration: const BoxDecoration(
+                            color: Colors.transparent,
                             shape: BoxShape.circle,
                           ),
                           child: Icon(
                             isPlaying
                               ? Icons.pause_rounded
                               : Icons.play_arrow_rounded,
-                            color: PandoosColors.primary,
-                            size: 24,
+                            color: Colors.white,
+                            size: 28,
                           ),
                         ),
                       ),
-                      const SizedBox(width: 4),
-                      // Skip next
-                      IconButton(
-                        icon: const Icon(Icons.skip_next_rounded, size: 26),
-                        color: PandoosColors.textSecondary,
-                        onPressed: () {},
-                      ),
+                      const SizedBox(width: 8),
                     ],
                   ),
                 ),
@@ -141,4 +135,3 @@ class MiniPlayer extends StatelessWidget {
     );
   }
 }
-

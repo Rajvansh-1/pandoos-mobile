@@ -3,7 +3,7 @@ class ApiEndpoints {
 
   // Stream resolution
   static String stream(String videoId, int quality) =>
-    '$base/api/stream?videoId=$videoId&quality=$quality';
+    '$base/api/download?videoId=$videoId';
 
   // Search
   static String search(String query, String type) =>

@@ -1,1 +1,3 @@
-// TODO: implement
+class QueueManager {
+  // Stub
+}

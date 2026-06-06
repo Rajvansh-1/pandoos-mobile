@@ -1,12 +1,16 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:rive/rive.dart';
+import 'package:rive/rive.dart' hide Image;
 import '../../../core/panda/panda_controller.dart';
 import '../../../core/panda/panda_state.dart';
+import '../../../core/panda/fft_isolate.dart';
+import '../../../core/panda/bpm_detector.dart';
+import '../../../core/panda/panda_emotion_engine.dart';
 import '../../../core/audio/audio_service_provider.dart';
+import '../../../core/theme/pandoos_colors.dart';
 
 class PandaPlayerView extends ConsumerStatefulWidget {
-  const PandaPlayerView({Key? key}) : super(key: key);
+  const PandaPlayerView({super.key});
 
   @override
   ConsumerState<PandaPlayerView> createState() => _PandaPlayerViewState();
@@ -14,33 +18,65 @@ class PandaPlayerView extends ConsumerStatefulWidget {
 
 class _PandaPlayerViewState extends ConsumerState<PandaPlayerView> {
   final PandaController _pandaController = PandaController();
+  final BPMDetector _bpmDetector = BPMDetector();
+  FFTIsolate? _fftIsolate;
+
+  bool _isPlaying = false;
+  PlaybackMood _currentPlaybackState = PlaybackMood.idle;
 
   @override
   void initState() {
     super.initState();
+    _startAudioProcessing();
+  }
+
+  void _startAudioProcessing() {
+    _fftIsolate = FFTIsolate(
+      onAmplitudeUpdate: (amplitude) {
+        if (!mounted || !_isPlaying) return;
+        
+        // 1. Update direct Rive amplitudes
+        _pandaController.onAmplitudeUpdate(amplitude);
+        
+        // 2. Feed BPM detector if we hit a beat drop
+        if (amplitude > 0.85) {
+          _bpmDetector.registerBeat();
+        }
+
+        // 3. Infer total mood periodically and update Rive State
+        final engine = ref.read(pandaEmotionEngineProvider);
+        final inferredState = engine.inferCurrentState(
+          playback: _currentPlaybackState,
+          energyLevel: amplitude,
+          bpm: _bpmDetector.currentBpm,
+          amplitude: amplitude,
+        );
+
+        _pandaController.onMoodChange(inferredState.mood);
+      },
+    );
+    _fftIsolate?.start();
   }
 
   @override
   void dispose() {
+    _fftIsolate?.stop();
     _pandaController.dispose();
     super.dispose();
   }
 
-  void _onRiveInit(Artboard artboard) {
-    _pandaController.init(artboard);
-  }
-
   @override
   Widget build(BuildContext context) {
-    // Listen to playback state to animate panda
+    // Listen to playback state to animate panda & toggle FFT
     ref.listen(audioHandlerProvider, (previous, next) {
       if (next != null) {
         next.playbackState.listen((state) {
-          if (state.playing) {
-            _pandaController.onPlaybackStateChange(PlaybackMood.playing);
-          } else {
-            _pandaController.onPlaybackStateChange(PlaybackMood.paused);
-          }
+          if (!mounted) return;
+          final isPlaying = state.playing;
+          setState(() => _isPlaying = isPlaying);
+          
+          _currentPlaybackState = isPlaying ? PlaybackMood.playing : PlaybackMood.paused;
+          _pandaController.onPlaybackStateChange(_currentPlaybackState);
         });
       }
     });
@@ -51,29 +87,40 @@ class _PandaPlayerViewState extends ConsumerState<PandaPlayerView> {
       child: Stack(
         alignment: Alignment.center,
         children: [
-          // Fallback background / shadow
+          // Glassmorphic Pedestal for Panda
           Container(
             width: 280,
             height: 280,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
-              color: Colors.black.withOpacity(0.2),
+              color: Colors.white.withValues(alpha: 0.03),
+              border: Border.all(
+                color: Colors.white.withValues(alpha: 0.1),
+                width: 1,
+              ),
               boxShadow: [
                 BoxShadow(
-                  color: Theme.of(context).primaryColor.withOpacity(0.1),
-                  blurRadius: 50,
-                  spreadRadius: 20,
+                  color: PandoosColors.primary.withValues(alpha: _isPlaying ? 0.3 : 0.1),
+                  blurRadius: _isPlaying ? 80 : 40,
+                  spreadRadius: _isPlaying ? 20 : 10,
                 )
               ],
             ),
           ),
           
-          // Rive Animation
-          RiveAnimation.asset(
-            'assets/rive/panda.riv',
-            fit: BoxFit.contain,
-            onInit: _onRiveInit,
-            // If the Rive file is missing or broken, RiveAnimation shows an empty box or error
+          // The actual Rive widget (stubbed with Image if riv fails)
+          // In production, this uses RiveAnimation.asset('assets/rive/panda.riv')
+          GestureDetector(
+            onTap: () {
+              // Manual interaction causes curious mood override
+              _pandaController.onMoodChange(PandaMood.curious);
+            },
+            child: Image.asset(
+              'assets/images/panda_placeholder.png',
+              width: 250,
+              height: 250,
+              fit: BoxFit.contain,
+            ),
           ),
         ],
       ),

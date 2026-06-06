@@ -53,7 +53,25 @@ class PandoosAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandle
     ));
   }
 
+  bool _isAudioServiceInitialized = false;
+
   Future<void> playTrack(Track track) async {
+    if (!_isAudioServiceInitialized) {
+      _isAudioServiceInitialized = true;
+      try {
+        await AudioService.init(
+          builder: () => this,
+          config: const AudioServiceConfig(
+            androidNotificationChannelId: 'com.pandoos.pandoos_mobile.channel.audio',
+            androidNotificationChannelName: 'Pandoos Playback',
+            androidNotificationOngoing: true,
+          ),
+        );
+      } catch (e) {
+        debugPrint("Failed to initialize AudioService: $e");
+      }
+    }
+
     final streamUrl = await _streamResolver.resolveStreamUrl(track);
     final finalTrack = streamUrl != null ? track.copyWith(streamUrl: streamUrl) : track;
 
@@ -69,7 +87,12 @@ class PandoosAudioHandler extends BaseAudioHandler with QueueHandler, SeekHandle
     mediaItem.add(item);
     
     if (finalTrack.streamUrl != null) {
-      await _player.setUrl(finalTrack.streamUrl!);
+      await _player.setUrl(
+        finalTrack.streamUrl!,
+        headers: {
+          'User-Agent': 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+        },
+      );
       play();
     } else {
       debugPrint("Could not resolve stream URL for track: ${track.title}");

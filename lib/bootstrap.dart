@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_dotenv/flutter_dotenv.dart';
 import 'package:hive_flutter/hive_flutter.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:supabase_flutter/supabase_flutter.dart';
 import 'src/app.dart';
 import 'src/features/download/data/download_repository.dart';
 
@@ -23,13 +24,20 @@ Future<void> bootstrap() async {
     await Hive.openBox<DownloadTrack>('offline_tracks');
     debugPrint('[Bootstrap] Hive initialized ✓');
 
-    // 3. Supabase — deferred until auth is needed
-    // Will be initialized lazily in AuthNotifier to avoid startup crash
-    debugPrint('[Bootstrap] Supabase deferred ✓');
+    // 3. Supabase — initialize eagerly so Library/Profile work immediately
+    final supabaseUrl = dotenv.env['SUPABASE_URL'] ?? '';
+    final supabaseAnonKey = dotenv.env['SUPABASE_ANON_KEY'] ?? '';
+    if (supabaseUrl.isNotEmpty && supabaseAnonKey.isNotEmpty) {
+      await Supabase.initialize(
+        url: supabaseUrl,
+        anonKey: supabaseAnonKey,
+      );
+      debugPrint('[Bootstrap] Supabase initialized ✓');
+    } else {
+      debugPrint('[Bootstrap] Supabase skipped (missing .env keys)');
+    }
 
     // 4. AudioService — initialized lazily when first song plays
-    // Calling AudioService.init() at startup causes crashes on some
-    // Android emulator configurations (foreground service binding race)
     debugPrint('[Bootstrap] AudioService deferred ✓');
 
     // 5. Run app

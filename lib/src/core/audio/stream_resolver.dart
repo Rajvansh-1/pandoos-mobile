@@ -5,6 +5,7 @@ import '../network/dio_client.dart';
 import '../network/api_endpoints.dart';
 import '../models/track.dart';
 import '../../features/download/data/download_repository.dart';
+import 'package:youtube_explode_dart/youtube_explode_dart.dart';
 
 final streamResolverProvider = Provider<StreamResolver>((ref) {
   return StreamResolver(
@@ -16,6 +17,7 @@ final streamResolverProvider = Provider<StreamResolver>((ref) {
 class StreamResolver {
   final Dio _dio;
   final DownloadRepository _downloadRepo;
+  final YoutubeExplode _yt = YoutubeExplode();
   
   StreamResolver(this._dio, this._downloadRepo);
 
@@ -24,20 +26,15 @@ class StreamResolver {
     final localUri = await _checkOffline(track.videoId);
     if (localUri != null) return localUri;
 
-    // 2 & 3. Check Vercel Edge Cache & Call /api/stream
+    // 2. Resolve directly using youtube_explode_dart (bypasses broken Vercel API)
     try {
-      final response = await _dio.get(
-        ApiEndpoints.stream(track.videoId, quality)
-      );
-      
-      if (response.statusCode == 200 && response.data != null) {
-        // Assume API returns { "url": "..." }
-        return response.data['url'] as String?;
-      }
+      final manifest = await _yt.videos.streamsClient.getManifest(track.videoId);
+      final streamInfo = manifest.audioOnly.withHighestBitrate();
+      return streamInfo.url.toString();
     } catch (e) {
-      debugPrint("Error resolving stream URL: $e");
+      debugPrint("Error resolving stream URL via YoutubeExplode: $e");
     }
-
+    
     return null;
   }
 

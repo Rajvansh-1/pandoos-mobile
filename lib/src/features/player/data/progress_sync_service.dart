@@ -31,24 +31,24 @@ class ProgressSyncService {
   }
 
   Future<void> _syncProgress() async {
-    final client = _supabaseService.client;
-    final userId = client.auth.currentUser?.id;
-    if (userId == null) return;
-
-    final mediaItem = _audioHandler.mediaItem.value;
-    if (mediaItem == null) return;
-
-    final playbackState = _audioHandler.playbackState.value;
-    final isPlaying = playbackState.playing;
-    final position = playbackState.position;
-    final duration = mediaItem.duration ?? const Duration(minutes: 3);
-
-    double progress = 0.0;
-    if (duration.inMilliseconds > 0) {
-      progress = position.inMilliseconds / duration.inMilliseconds;
-    }
-
     try {
+      final client = _supabaseService.client;
+      final userId = client.auth.currentUser?.id;
+      if (userId == null) return;
+
+      final mediaItem = _audioHandler.mediaItem.value;
+      if (mediaItem == null) return;
+
+      final playbackState = _audioHandler.playbackState.value;
+      final isPlaying = playbackState.playing;
+      final position = playbackState.position;
+      final duration = mediaItem.duration ?? const Duration(minutes: 3);
+
+      double progress = 0.0;
+      if (duration.inMilliseconds > 0) {
+        progress = position.inMilliseconds / duration.inMilliseconds;
+      }
+
       await client.from('now_playing').upsert({
         'user_id': userId,
         'video_id': mediaItem.id,
@@ -61,7 +61,7 @@ class ProgressSyncService {
         'updated_at': DateTime.now().toIso8601String(),
       });
     } catch (e) {
-      // Ignore sync errors silently
+      // Ignore sync errors silently, including uninitialized Supabase client
     }
   }
 
